@@ -1,0 +1,13 @@
+.DSStore
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+.idea/
+venv/
+cmake_install.cmake
+CMakeFiles/
+cmake-build-release/
+cmake-build-debug/
+CMakeCache.txt
+*.xcodeproj/xcuserdata
+Resources/lbrynet
