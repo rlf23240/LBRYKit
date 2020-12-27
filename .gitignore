@@ -10,4 +10,3 @@ cmake-build-release/
 cmake-build-debug/
 CMakeCache.txt
 *.xcodeproj/xcuserdata
-Resources/lbrynet

@@ -19,7 +19,7 @@ Method other then main section can be called, you just need to encode your param
 ## Build
 
 1. Clone this project.
-2. Download [lbry-sdk release](https://github.com/lbryio/lbry-sdk/releases) and put lbrynet into Resources folder. This will be executable for auto daemon management. SDK version at least v0.8.7 is recommanded.
+2. Download [lbry-sdk release](https://github.com/lbryio/lbry-sdk/releases) and put lbrynet into Resources folder. This will be executable for auto daemon management. SDK version at least v0.87.0 is recommanded.
 3. Build framework.
 
 ## Usage
