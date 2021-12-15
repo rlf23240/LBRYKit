@@ -56,19 +56,28 @@ public class LBRYDaemon {
     /// Subscriber for daemon heartbeat.
     private var daemonHeartbeatOberserver: AnyCancellable?
     
+    /// Daemon executable location.
+    private var lbryDeamonLocations: [URL?] = [
+        // Location for LBRY desktop app provided deamon.
+        URL(fileURLWithPath: "/Applications/LBRY.app/Contents/Resources/static/daemon/lbrynet"),
+        // Framework bundle provided daemon.
+        Bundle(for: LBRYDaemon.self).url(forResource: "lbrynet", withExtension: nil)
+    ]
+    
     /// Launched daemon subprocess if no existing daemon.
     private var lbryDaemonProcess: Process? = nil
     
     /// Initialize deamon.
     private init() {
-        /// Start heartbeating.
-        /// First heartheat will try to launch daemon automatically.
+        // Start heartbeating.
+        // First heartbeat will try to launch daemon automatically.
         self.heartbeat()
     }
     
     deinit {
-        self.shouldAutomaticRestartDaemon = false
-        self.lbryDaemonProcess?.terminate()
+        // This actually never call since this class is singleton.
+        // Please stop daemon by calling `terminate` explicitly.
+        // self.terminate()
     }
 }
 
@@ -81,7 +90,6 @@ extension LBRYDaemon {
     /// - Parameters:
     ///     - method: Method name of daemon.
     ///     - params: Method parameters.
-    ///     - complete: Completion callback.
     public func request(
         method: String,
         params: [String:Any] = [:]
@@ -113,7 +121,7 @@ extension LBRYDaemon {
             } .eraseToAnyPublisher()
     }
     
-    /// Encode json object to `Data`.
+    // Encode json object to `Data`.
     private func encode(object: [String:Any]) -> Data? {
         if let jsonData = try? JSONSerialization.data(
             withJSONObject: object,
@@ -124,7 +132,7 @@ extension LBRYDaemon {
         return nil
     }
     
-    /// Decode json object from `Data`.
+    // Decode json object from `Data`.
     private func decode(data: Data) -> [String:Any]? {
         if let object = try? JSONSerialization.jsonObject(
             with: data,
@@ -147,15 +155,18 @@ extension LBRYDaemon {
     /// This method provide no additional information about launch process or callback.
     /// You should subscribe `daemonConnectionState` to reflect any change of connection state.
     public func launch() {
-        /// Relaunch needed only when daemon disconnected.
-        if self.daemonConnectionState != .Disconnected {
+        // Relaunch needed only when daemon disconnected.
+        if (
+            self.daemonConnectionState != .Disconnected &&
+            self.daemonConnectionState != .Terminated
+        ) {
             return
         }
         
-        /// Lock daemon with connecting state.
+        // Lock daemon with connecting state.
         self.daemonConnectionState = .Connecting
         
-        /// Create subscriber to launch daemon.
+        // Create subscriber to launch daemon.
         self.daemonLaunchObserver = self.status().sink() { completion in
             switch completion {
             case .finished:
@@ -172,13 +183,35 @@ extension LBRYDaemon {
         }
     }
     
+    public func terminate() {
+        // Stop only when daemon still running.
+        if self.daemonConnectionState == .Terminated {
+            return
+        }
+        // Mark daemon state as terminated, prevent auto restart.
+        self.daemonConnectionState = .Terminated
+        
+        // Terminate subprocess.
+        self.lbryDaemonProcess?.terminate()
+        self.lbryDaemonProcess = nil
+    }
+    
     /// Launch deamon as subprocess if needed.
     private func launchDeamon() throws {
         if self.lbryDaemonProcess != nil {
             throw LBRYDaemonError.DaemonSubprocessStateInconsistent
         }
         
-        guard let url = self.lbryDaemonExecutableURL() else {
+        guard let url: URL = {
+            for url in self.lbryDeamonLocations {
+                if let url = url, FileManager.default.isExecutableFile(
+                    atPath: url.path
+                ) {
+                    return url
+                }
+            }
+            return nil
+        } () else {
             throw LBRYDaemonError.DaemonExecutableNotFind
         }
         
@@ -229,14 +262,6 @@ extension LBRYDaemon {
         }
     }
     
-    /// Find LBRY deamon executable in bundle.
-    private func lbryDaemonExecutableURL() -> URL? {
-        let bundle = Bundle(for: LBRYDaemon.self)
-        let lbrynetURL = bundle.url(forResource: "lbrynet", withExtension: nil)
-        
-        return lbrynetURL
-    }
-    
     /// Regular check for LBRY daemon status.
     private func heartbeat() {
         switch self.daemonConnectionState {
@@ -247,7 +272,7 @@ extension LBRYDaemon {
                     case .finished:
                         break
                     case .failure:
-                        /// Detect connection is broken.
+                        // Detect connection is broken.
                         self.daemonConnectionState = .Disconnected
                     }
                     DispatchQueue.main.asyncAfter(deadline: .now() + self.heartbeatPeriod) {
@@ -261,7 +286,7 @@ extension LBRYDaemon {
                 .sink() { completion in
                     switch completion {
                     case .finished:
-                        /// Detect connection is established.
+                        // Detect connection is established.
                         self.daemonConnectionState = .Connected
                     case .failure:
                         break
@@ -274,10 +299,15 @@ extension LBRYDaemon {
                 }
         case .Disconnected:
             if self.shouldAutomaticRestartDaemon {
-                /// Try to launch daemon.
+                // Try to launch daemon.
                 self.launch()
             }
             
+            DispatchQueue.main.asyncAfter(deadline: .now() + self.heartbeatPeriod) {
+                self.heartbeat()
+            }
+        case .Terminated:
+            // Do nothing. Just schedule next heartbeat.
             DispatchQueue.main.asyncAfter(deadline: .now() + self.heartbeatPeriod) {
                 self.heartbeat()
             }

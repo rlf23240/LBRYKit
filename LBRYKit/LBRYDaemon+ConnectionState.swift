@@ -31,5 +31,6 @@ extension LBRYDaemon {
         case Disconnected
         case Connecting
         case Connected
+        case Terminated
     }
 }

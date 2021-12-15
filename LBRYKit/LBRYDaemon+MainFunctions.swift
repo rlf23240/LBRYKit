@@ -30,10 +30,6 @@ import Combine
 /// Main functions of LBRY daemon.
 extension LBRYDaemon {
     /// Get LBRY deamon status.
-    ///
-    /// - Parameters:
-    ///   - complete:
-    ///     Completion callback.
     public func status() -> AnyPublisher<[String:Any], Error> {
         return self.request(method: "status")
     }
@@ -46,8 +42,6 @@ extension LBRYDaemon {
     ///     If both exist, value provide by `params` will be used.
     ///   - params:
     ///     Same as LBRY daemon call.
-    ///   - complete:
-    ///     Completion callback.
     public func resolve(
         urls: [String] = [],
         params: [String:Any] = [:]
@@ -75,8 +69,6 @@ extension LBRYDaemon {
     ///     URL to be resolve. This will ignore `urls` in params.
     ///   - params:
     ///     Same as LBRY daemon call.
-    ///   - complete:
-    ///     Completion callback.
     public func resolve(
         url: String,
         params: [String:Any] = [:]
@@ -104,8 +96,6 @@ extension LBRYDaemon {
     ///     If both exist, value provide by `params` will be used.
     ///   - params:
     ///     Same as LBRY daemon call.
-    ///   - complete:
-    ///     Completion callback.
     public func get(
         uri: String = "",
         params: [String:Any] = [:]
